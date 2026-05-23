@@ -11,7 +11,7 @@ import math
 
 app = Flask(__name__)
 app.secret_key = "tizedes_titok_2024"
-PASSWORD = "nemtudom"
+PASSWORD = "kingnasir1235"
 
 LOGIN_HTML = """<!DOCTYPE html>
 <html lang="hu">
