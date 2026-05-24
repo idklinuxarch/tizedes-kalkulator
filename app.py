@@ -14,6 +14,132 @@ app.secret_key = "tizedes_titok_2024"
 app.config["SESSION_PERMANENT"] = False
 PASSWORD = "kingnasir1235"
 ADMIN_KEY = "diakvok1239"
+
+# Felhasználók
+USERS = {
+    "tagok": "publikus",
+    "adminvok123": "kingnasir1235diakvok1239zeteny"
+}
+
+# Online felhasználók tárolása
+import time
+online_users = {}  # session_id -> {name, time}
+WHITE_LOGIN_HTML = """<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bejelentkezés</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Source+Code+Pro:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: #ffffff;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: Source Code Pro, monospace;
+  }
+  .card {
+    background: white;
+    border: 2px solid #1a1a2e;
+    padding: 2.5rem 2rem;
+    width: 360px;
+    box-shadow: 6px 6px 0 #e8dfc8;
+    position: relative;
+  }
+  .card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 8px;
+    background: #1a1a2e;
+  }
+  h1 {
+    font-family: Playfair Display, serif;
+    font-size: 1.8rem;
+    font-weight: 900;
+    color: #1a1a2e;
+    margin-bottom: 0.2rem;
+    padding-left: 0.8rem;
+  }
+  .sub {
+    font-size: 0.72rem;
+    color: #7a6f5e;
+    margin-bottom: 2rem;
+    padding-left: 0.8rem;
+    letter-spacing: 0.08em;
+  }
+  .field { margin-bottom: 1.2rem; }
+  label {
+    display: block;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: #7a6f5e;
+    margin-bottom: 0.4rem;
+    font-weight: 600;
+  }
+  input {
+    width: 100%;
+    font-family: Source Code Pro, monospace;
+    font-size: 1rem;
+    padding: 0.6rem 0.8rem;
+    border: 2px solid #1a1a2e;
+    background: #fffdf9;
+    color: #1a1a2e;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  input:focus { border-color: #c0392b; }
+  button {
+    width: 100%;
+    font-family: Playfair Display, serif;
+    font-size: 1rem;
+    font-weight: 700;
+    padding: 0.65rem;
+    background: #1a1a2e;
+    color: #f5f0e8;
+    border: 2px solid #1a1a2e;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    transition: all 0.15s;
+    margin-top: 0.5rem;
+  }
+  button:hover { background: #c0392b; border-color: #c0392b; }
+  .error {
+    background: #fdf0ee;
+    border-left: 3px solid #c0392b;
+    padding: 0.5rem 0.8rem;
+    font-size: 0.8rem;
+    color: #c0392b;
+    margin-bottom: 1rem;
+  }
+  .icon { font-size: 2rem; text-align: center; margin-bottom: 1rem; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="icon">🎓</div>
+  <h1>Üdvözlünk</h1>
+  <p class="sub">Tizedes Tört Kalkulátor — Bejelentkezés</p>
+  {% if error %}<div class="error">❌ Hibás felhasználónév vagy jelszó!</div>{% endif %}
+  <form method="POST" action="/">
+    <div class="field">
+      <label>Felhasználó</label>
+      <input type="text" name="username" placeholder="felhasználónév" autofocus>
+    </div>
+    <div class="field">
+      <label>Jelszó</label>
+      <input type="password" name="password" placeholder="••••••••">
+    </div>
+    <button type="submit">Bejelentkezés →</button>
+  </form>
+</div>
+</body>
+</html>"""
+
 ADMIN_HTML = """<!DOCTYPE html>
 <html lang="hu">
 <head>
@@ -147,8 +273,103 @@ LOGIN_HTML = """<!DOCTYPE html>
 </html>
 """
 
+
+ADMIN_PANEL_HTML = """<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Panel</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Source+Code+Pro:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#0a0a1a; min-height:100vh; font-family:Source Code Pro,monospace; color:#e0e0e0; padding:2rem; }
+  h1 { font-family:Playfair Display,serif; font-size:2rem; color:#ff4444; margin-bottom:0.3rem; }
+  .sub { font-size:0.75rem; color:#666; margin-bottom:2rem; letter-spacing:0.1em; }
+  .stats { display:flex; gap:1rem; margin-bottom:2rem; flex-wrap:wrap; }
+  .stat-box { background:#111; border:1px solid #333; border-left:4px solid #ff4444; padding:1rem 1.5rem; min-width:150px; }
+  .stat-num { font-size:2.5rem; font-weight:700; color:#ff4444; }
+  .stat-label { font-size:0.7rem; color:#666; text-transform:uppercase; letter-spacing:0.1em; }
+  table { width:100%; border-collapse:collapse; background:#111; }
+  th { background:#1a1a2e; color:#999; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.1em; padding:0.8rem 1rem; text-align:left; border-bottom:1px solid #333; }
+  td { padding:0.8rem 1rem; border-bottom:1px solid #1a1a1a; font-size:0.85rem; }
+  tr:hover td { background:#161616; }
+  .kick-btn { background:#c0392b; color:white; border:none; padding:0.35rem 0.8rem; cursor:pointer; font-family:monospace; font-size:0.75rem; transition:all 0.15s; }
+  .kick-btn:hover { background:#ff4444; }
+  .online-dot { display:inline-block; width:8px; height:8px; background:#2ecc71; border-radius:50%; margin-right:6px; animation:pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
+  .logout-btn { background:transparent; border:1px solid #ff4444; color:#ff4444; padding:0.4rem 1rem; cursor:pointer; font-family:monospace; font-size:0.8rem; margin-bottom:2rem; transition:all 0.15s; }
+  .logout-btn:hover { background:#ff4444; color:white; }
+  .refresh-btn { background:transparent; border:1px solid #333; color:#666; padding:0.4rem 1rem; cursor:pointer; font-family:monospace; font-size:0.8rem; margin-bottom:2rem; margin-left:0.5rem; transition:all 0.15s; }
+  .refresh-btn:hover { border-color:#999; color:#999; }
+  .empty { color:#444; font-size:0.85rem; padding:1rem; text-align:center; }
+</style>
+</head>
+<body>
+<h1>⚡ Admin Panel</h1>
+<p class="sub">Tizedes Tört Kalkulátor — Vezérlőpult</p>
+<form method="GET" action="/admin-logout" style="display:inline"><button class="logout-btn">Kijelentkezés</button></form>
+<button class="refresh-btn" onclick="location.reload()">↻ Frissítés</button>
+<div class="stats">
+  <div class="stat-box">
+    <div class="stat-num">{{ online_count }}</div>
+    <div class="stat-label">Online felhasználó</div>
+  </div>
+</div>
+<table>
+  <thead><tr><th>Állapot</th><th>Felhasználónév</th><th>Bejelentkezés ideje</th><th>Művelet</th></tr></thead>
+  <tbody>
+    {% if users %}
+      {% for u in users %}
+      <tr>
+        <td><span class="online-dot"></span>Online</td>
+        <td>{{ u.name }}</td>
+        <td>{{ u.time }}</td>
+        <td><form method="POST" action="/kick/{{ u.sid }}"><button class="kick-btn">⚡ Kidobás</button></form></td>
+      </tr>
+      {% endfor %}
+    {% else %}
+      <tr><td colspan="4" class="empty">Nincs online felhasználó</td></tr>
+    {% endif %}
+  </tbody>
+</table>
+</body>
+</html>"""
+
+import uuid
+from datetime import datetime
+
+@app.route("/", methods=["GET", "POST"])
+def index():
+    # POST = white login form submitted
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "").strip()
+        
+        if username == "adminvok123" and password == USERS["adminvok123"]:
+            session.permanent = False
+            session["is_admin"] = True
+            session["username"] = username
+            return redirect("/admin-panel")
+        elif username == "tagok" and password == USERS["tagok"]:
+            session.permanent = False
+            session["white_ok"] = True
+            session["username"] = username
+            return redirect("/admin")
+        else:
+            return render_template_string(WHITE_LOGIN_HTML, error=True)
+    
+    # GET - check if already logged in
+    if session.get("logged_in"):
+        return render_template_string(HTML)
+    if session.get("is_admin"):
+        return redirect("/admin-panel")
+    return render_template_string(WHITE_LOGIN_HTML, error=False)
+
 @app.route("/admin", methods=["GET", "POST"])
 def admin():
+    if not session.get("white_ok"):
+        return redirect("/")
     if request.method == "POST":
         if request.form.get("admin_key") == ADMIN_KEY:
             session.permanent = False
@@ -160,19 +381,57 @@ def admin():
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if not session.get("admin_ok"):
-        return redirect("/admin")
+        return redirect("/")
     if request.method == "POST":
         if request.form.get("password") == PASSWORD:
             session.permanent = False
             session["logged_in"] = True
-            return redirect("/")
+            sid = str(uuid.uuid4())
+            session["sid"] = sid
+            online_users[sid] = {
+                "name": session.get("username", "tagok"),
+                "time": datetime.now().strftime("%H:%M:%S")
+            }
+            return redirect("/kalkulator")
         return render_template_string(LOGIN_HTML, error=True)
     return render_template_string(LOGIN_HTML, error=False)
 
+@app.route("/kalkulator")
+def kalkulator():
+    if not session.get("logged_in"):
+        return redirect("/")
+    return render_template_string(HTML)
+
+@app.route("/admin-panel")
+def admin_panel():
+    if not session.get("is_admin"):
+        return redirect("/")
+    users_list = [
+        {"sid": sid, "name": u["name"], "time": u["time"]}
+        for sid, u in online_users.items()
+    ]
+    return render_template_string(ADMIN_PANEL_HTML, users=users_list, online_count=len(users_list))
+
+@app.route("/kick/<sid>", methods=["POST"])
+def kick(sid):
+    if not session.get("is_admin"):
+        return redirect("/")
+    if sid in online_users:
+        del online_users[sid]
+    return redirect("/admin-panel")
+
+@app.route("/admin-logout")
+def admin_logout():
+    session.clear()
+    return redirect("/")
+
 @app.route("/logout")
 def logout():
+    sid = session.get("sid")
+    if sid and sid in online_users:
+        del online_users[sid]
     session.clear()
-    return redirect("/admin")
+    return redirect("/")
 
 HTML = """<!DOCTYPE html>
 <html lang="hu">
@@ -1134,13 +1393,7 @@ window.onload = () => calcNumberLine();
 </html>"""
 
 
-@app.route('/')
-def index():
-    if not session.get('admin_ok'):
-        return redirect('/admin')
-    if not session.get('logged_in'):
-        return redirect('/login')
-    return render_template_string(HTML)
+
 
 
 
