@@ -24,6 +24,210 @@ USERS = {
 # Online felhasználók tárolása
 import time
 online_users = {}  # session_id -> {name, time}
+PIN_HTML = """<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>⚠️</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:#000;min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:monospace;overflow:hidden;}
+  
+  .scanline {
+    position:fixed;top:0;left:0;width:100%;height:100%;
+    background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,255,0,0.015) 2px,rgba(0,255,0,0.015) 4px);
+    pointer-events:none;z-index:0;
+  }
+  
+  .container{position:relative;z-index:1;text-align:center;padding:2rem;}
+  
+  .warning-text{
+    color:#ff0000;
+    font-size:1.3rem;
+    letter-spacing:0.15em;
+    margin-bottom:0.6rem;
+    animation:flicker 4s infinite;
+    text-shadow:0 0 10px #ff0000;
+  }
+  .sub-text{
+    color:#aa0000;
+    font-size:0.8rem;
+    letter-spacing:0.1em;
+    margin-bottom:2.5rem;
+    opacity:0.8;
+  }
+  
+  @keyframes flicker{
+    0%,92%,94%,96%,100%{opacity:1;}
+    93%{opacity:0.2;}
+    95%{opacity:0.6;}
+    97%{opacity:0.1;}
+  }
+  
+  .display{
+    font-size:2rem;
+    letter-spacing:0.5em;
+    color:#ff0000;
+    margin-bottom:1.5rem;
+    min-height:2.5rem;
+    text-shadow:0 0 8px #ff0000;
+    transition:all 0.1s;
+  }
+  
+  .display.shake{
+    animation:shake 0.4s;
+    color:#ff4444;
+  }
+  
+  @keyframes shake{
+    0%,100%{transform:translateX(0);}
+    20%{transform:translateX(-8px);}
+    40%{transform:translateX(8px);}
+    60%{transform:translateX(-8px);}
+    80%{transform:translateX(8px);}
+  }
+  
+  .error-msg{
+    color:#ff0000;
+    font-size:0.75rem;
+    letter-spacing:0.1em;
+    margin-bottom:1rem;
+    min-height:1rem;
+    text-shadow:0 0 6px #ff0000;
+  }
+  
+  .blocked-msg{
+    color:#ff0000;
+    font-size:1rem;
+    letter-spacing:0.08em;
+    line-height:1.8;
+    text-shadow:0 0 10px #ff0000;
+    animation:flicker 3s infinite;
+    margin-top:1rem;
+  }
+  
+  .keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:240px;margin:0 auto;}
+  
+  .key{
+    background:#000;
+    border:1px solid #330000;
+    color:#ff0000;
+    font-family:monospace;
+    font-size:1.3rem;
+    padding:1rem;
+    cursor:pointer;
+    transition:all 0.1s;
+    text-shadow:0 0 6px #ff0000;
+    user-select:none;
+  }
+  .key:hover{background:#110000;border-color:#ff0000;box-shadow:0 0 8px #ff000044;}
+  .key:active{background:#220000;transform:scale(0.95);}
+  .key.del{font-size:0.9rem;color:#660000;border-color:#220000;}
+  .key.del:hover{color:#ff0000;border-color:#ff0000;}
+  .key.zero{grid-column:2;}
+</style>
+</head>
+<body>
+<div class="scanline"></div>
+<div class="container">
+  <div class="warning-text">Ez talán mi lehet?</div>
+  <div class="sub-text">Hát majd meg tudod ha tudod a kódot...</div>
+  
+  <div class="display" id="display">_ _ _ _</div>
+  <div class="error-msg" id="error-msg"></div>
+  
+  <div class="keypad" id="keypad">
+    <button class="key" onclick="press('1')">1</button>
+    <button class="key" onclick="press('2')">2</button>
+    <button class="key" onclick="press('3')">3</button>
+    <button class="key" onclick="press('4')">4</button>
+    <button class="key" onclick="press('5')">5</button>
+    <button class="key" onclick="press('6')">6</button>
+    <button class="key" onclick="press('7')">7</button>
+    <button class="key" onclick="press('8')">8</button>
+    <button class="key" onclick="press('9')">9</button>
+    <button class="key del" onclick="del()">⌫</button>
+    <button class="key zero" onclick="press('0')">0</button>
+  </div>
+</div>
+
+<script>
+let input = '';
+let attempt = 0;
+const CODES = ['7349', '1963'];
+
+function updateDisplay() {
+  const d = document.getElementById('display');
+  if (input.length === 0) {
+    d.textContent = '_ _ _ _';
+  } else {
+    let dots = '● '.repeat(input.length).trim();
+    let blanks = '_ '.repeat(4 - input.length).trim();
+    d.textContent = (dots + (blanks ? ' ' + blanks : '')).trim();
+  }
+}
+
+function press(num) {
+  if (input.length >= 4) return;
+  input += num;
+  updateDisplay();
+  if (input.length === 4) {
+    setTimeout(check, 300);
+  }
+}
+
+function del() {
+  input = input.slice(0, -1);
+  updateDisplay();
+  document.getElementById('error-msg').textContent = '';
+}
+
+function check() {
+  if (input === CODES[attempt]) {
+    if (attempt === 0) {
+      // First code correct - go to white login
+      window.location.href = '/white-login';
+    }
+  } else {
+    attempt++;
+    const display = document.getElementById('display');
+    display.classList.add('shake');
+    setTimeout(() => display.classList.remove('shake'), 400);
+    
+    if (attempt === 1) {
+      // First wrong - show error, wait for second attempt with new code
+      document.getElementById('error-msg').textContent = '// HOZZÁFÉRÉS MEGTAGADVA';
+      input = '';
+      setTimeout(() => {
+        document.getElementById('error-msg').textContent = '';
+        updateDisplay();
+      }, 1500);
+    } else {
+      // Second wrong - blocked forever
+      document.getElementById('keypad').innerHTML = '';
+      document.getElementById('display').textContent = '';
+      document.getElementById('error-msg').textContent = '';
+      document.getElementById('keypad').insertAdjacentHTML('afterend', 
+        '<div class="blocked-msg">Tudom hogy nem ideillő vagy....</div>'
+      );
+      // Disable everything
+      document.querySelectorAll('.key').forEach(k => k.disabled = true);
+    }
+  }
+  if (attempt < 2) input = '';
+  if (attempt < 2) updateDisplay();
+}
+
+// Keyboard support
+document.addEventListener('keydown', e => {
+  if (e.key >= '0' && e.key <= '9') press(e.key);
+  if (e.key === 'Backspace') del();
+});
+</script>
+</body>
+</html>"""
+
 WHITE_LOGIN_HTML = """<!DOCTYPE html>
 <html lang="hu">
 <head>
@@ -339,9 +543,16 @@ ADMIN_PANEL_HTML = """<!DOCTYPE html>
 import uuid
 from datetime import datetime
 
-@app.route("/", methods=["GET", "POST"])
+@app.route("/")
 def index():
-    # POST = white login form submitted
+    if session.get("logged_in"):
+        return redirect("/kalkulator")
+    if session.get("is_admin"):
+        return redirect("/admin-panel")
+    return render_template_string(PIN_HTML)
+
+@app.route("/white-login", methods=["GET", "POST"])
+def white_login():
     if request.method == "POST":
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "").strip()
@@ -358,18 +569,12 @@ def index():
             return redirect("/admin")
         else:
             return render_template_string(WHITE_LOGIN_HTML, error=True)
-    
-    # GET - check if already logged in
-    if session.get("logged_in"):
-        return render_template_string(HTML)
-    if session.get("is_admin"):
-        return redirect("/admin-panel")
     return render_template_string(WHITE_LOGIN_HTML, error=False)
 
 @app.route("/admin", methods=["GET", "POST"])
 def admin():
     if not session.get("white_ok"):
-        return redirect("/")
+        return redirect("/white-login")
     if request.method == "POST":
         if request.form.get("admin_key") == ADMIN_KEY:
             session.permanent = False
@@ -381,7 +586,7 @@ def admin():
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if not session.get("admin_ok"):
-        return redirect("/")
+        return redirect("/white-login")
     if request.method == "POST":
         if request.form.get("password") == PASSWORD:
             session.permanent = False
